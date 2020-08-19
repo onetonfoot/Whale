@@ -1,0 +1,4 @@
+[ Info: generating /home/dom/.julia/bin/whale.jl
+[ Info: generating /home/dom/.julia/bin/whale
+┌ Warning: fish completion is not supported yet
+└ @ Comonicon.BuildTools ~/.julia/packages/Comonicon/o1ul2/src/tools/build.jl:500

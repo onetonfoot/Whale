@@ -1,0 +1,10 @@
+name = "Whale"
+uuid = "51edce80-ee2f-4cd4-a3ac-0e2aba7906dd"
+authors = ["onetonfoot <onetonfoot@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Comonicon = "863f3e99-da2a-4334-8734-de3dacbe5542"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+SimpleContainerGenerator = "b8d349fb-717b-4aac-a9b1-e1da4219c631"

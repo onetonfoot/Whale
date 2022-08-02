@@ -1,2 +1,2 @@
-using Comonicon, Whale
-Comonicon.install(Whale)
+using Whale
+Whale.comonicon_install()

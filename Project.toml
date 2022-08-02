@@ -6,5 +6,12 @@ version = "0.1.0"
 [deps]
 Comonicon = "863f3e99-da2a-4334-8734-de3dacbe5542"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-SimpleContainerGenerator = "b8d349fb-717b-4aac-a9b1-e1da4219c631"
+PrecompileSignatures = "91cefc8d-f054-46dc-8f8c-26e11d7c5411"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[compat]
+PrecompileSignatures = "3.0"
+PackageCompiler = "3.0"
+Comonicon = "0.11"

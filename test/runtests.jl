@@ -1,19 +1,25 @@
-using Comonicon
-import Pkg.TOML
-import SimpleContainerGenerator
+using Whale, PackageCompiler, PrecompileSignatures, TOML
 
-pkgs = [
-    "Foo", # Replace Foo, Bar, Baz, etc. with the names of actual packages that you want to use
-    "Bar",
-    "Baz",
-]
-julia_version = v"1.4.0"
+# module MyModule
 
-SimpleContainerGenerator.create_dockerfile(pkgs,
-                                           pwd();
-                                           julia_version=julia_version)
+# function f(x::Int, y::Float64)
+#     x + y
+# end
+# end
 
+# expr = Whale._sysimage("ExamplePkg")
 
-# TOML.parsefile
-                                           
+# expr = Whale.sysimage("ExamplePkg", execute=true, replace_default=true)
 
+# expr = @macroexpand PrecompileSignatures.@precompile_signatures(Whale)
+# expr = @macroexpand PrecompileSignatures.@precompile_signatures(MyModule)
+
+# using ExamplePkg
+
+# PackageCompiler.create_sysimage([
+#         "ExamplePkg",
+#     ],
+#     project=pkgdir(ExamplePkg),
+#     sysimage_path=pwd(),
+#     replace_default=false
+# )

@@ -1,52 +1,73 @@
 module Whale
 
-using Comonicon, Pkg.TOML, SimpleContainerGenerator, Logging
-import SimpleContainerGenerator: Config
+using Comonicon, PackageCompiler, PrecompileSignatures, TOML
 
-const default_config = Config()
+# Currently not used
+function get_module(s::Symbol)
+    expr = quote
+        try
+            using $s
+        catch e
+        end
+    end
+    eval(expr)
+    getfield(Main, s)
+end
 
-@main function whale(
-    project_toml::String;
-    julia_version = string(VERSION),
-    make_sysimage::Bool = default_config.make_sysimage,
-    parent_image::String = default_config.parent_image,
-    julia_cpu_target = default_config.julia_cpu_target,
-    packagecompiler_installation_command = default_config.packagecompiler_installation_command,
+function get_module_pkgs(mod)
+    folder = pkgdir(mod)
+    if isnothing(folder)
+        return []
+    end
+
+    file = joinpath(folder, "Project.toml")
+    toml = TOML.parsefile(file)
+    get(toml, "deps", Dict()) |> keys |> collect
+end
+
+function _sysimage(
+    mod_str::String,
+    replace_default=false,
+    sysimage_path=pwd(),
 )
+    mod_sym = Symbol(mod_str)
+    mods = get_module_pkgs(Whale)
+    push!(mods, string(mod_sym))
+    quote
 
-    project_info = TOML.parsefile(project_toml)
-    pkgs = get(project_info, "deps", Dict()) |> keys |> collect
-    dir = tempname()
-    logger = Logging.global_logger()
-    Logging.global_logger(NullLogger())
-    SimpleContainerGenerator.create_dockerfile(
-        pkgs,
-        dir,
-        julia_version = julia_version,
-        make_sysimage = make_sysimage,
-        parent_image = parent_image,
-        julia_cpu_target = julia_version,
-        packagecompiler_installation_command = packagecompiler_installation_command,
-    )
-    Logging.global_logger(logger)
-    dockerfile = joinpath(dir, readdir(dir)[1])
-    read(dockerfile, String) |> print
+        using Whale.PackageCompiler, Whale.PrecompileSignatures, $mod_sym
+
+        sigs = @macroexpand @precompile_signatures($mod_sym)
+        file = tempname()
+        write(file, string(sigs))
+        precompile_statements_file = String[]
+        push!(precompile_statements_file, file)
+
+        PackageCompiler.create_sysimage(
+            $mods,
+            project=pkgdir($mod_sym),
+            replace_default=$replace_default,
+            sysimage_path=$sysimage_path,
+            precompile_statements_file=precompile_statements_file
+        )
+    end
 end
 
-
+@cast function sysimage(mod::String; execute=false, replace_default=false)
+    expr = _sysimage(mod, replace_default)
+    execute ? eval(expr) : println(expr)
 end
 
+@cast function dockerize(mod::String)
+    """
+    FROM julia: latest
+    RUN julia -e 'import Pkg; Pkg.add(url="https://github.com/onetonfoot/Whale.git")'
+    RUN whale sysimage $mod --replace 
 
-# TODO: Still need to support these
+    ENTRYPOINT julia -e "using $mod"
+    """
+end
 
-#   Keyword Arguments
-#   –––––––––––––––––––
-#     •    additional_apt::Vector{String}
-#     •    exclude_packages_from_sysimage::Vector{String}
-#     •    no_test::Vector{String}
+@main
 
-#   Advanced Keyword Arguments
-#   ––––––––––––––––––––––––––––
-#     •    override_default_apt::Vector{String}
-#     •    precompile_execution_env_vars::Dict{String, String}
-#     •    wrapper_script_env_vars::Dict{String, String}
+end

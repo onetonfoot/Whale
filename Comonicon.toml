@@ -1,7 +1,7 @@
 name = "whale"
 
 [install]
-export_path=true
+path=".julia"
 completion=true
 quiet=false
 compile="min"

@@ -1,18 +1,11 @@
 module Whale
 
-using Comonicon, PackageCompiler, PrecompileSignatures, TOML
+using PackageCompiler, PrecompileSignatures, TOML, Libdl, Pkg
 
-# Currently not used
-function get_module(s::Symbol)
-    expr = quote
-        try
-            using $s
-        catch e
-        end
-    end
-    eval(expr)
-    getfield(Main, s)
-end
+# When run from gloabl env we can get all of the packages installed
+# Pkg.project().dependencies
+
+# Pkg.dir("MyPkg")
 
 function get_module_pkgs(mod)
     folder = pkgdir(mod)
@@ -25,15 +18,34 @@ function get_module_pkgs(mod)
     get(toml, "deps", Dict()) |> keys |> collect
 end
 
+isproject(folder) = isfile(joinpath(folder, "Project.toml"))
+
+function project_info(project)
+    redirect_stdio(stderr=devnull, stdout=devnull) do
+        previous_project = Pkg.project()
+        Pkg.activate(project)
+        info = Pkg.project()
+        Pkg.activate(previous_project.path)
+        info
+    end
+end
+
 function _sysimage(
-    mod_str::String,
-    replace_default=false,
-    sysimage_path=pwd(),
+    project::String, #TODO:  Should support both file paths or module names
+    sysimage_path=nothing,
 )
+
+    info = project_info(project)
+    mod_str = info.name
     mod_sym = Symbol(mod_str)
-    mods = get_module_pkgs(Whale)
-    push!(mods, string(mod_sym))
+
+    if isnothing(sysimage_path)
+        sysimage_path = joinpath(homedir(), ".julia", "sysimages", "$(mod_str).$(Libdl.dlext)")
+    end
+
     quote
+        using Pkg
+        Pkg.activate($project)
 
         using Whale.PackageCompiler, Whale.PrecompileSignatures, $mod_sym
 
@@ -44,30 +56,36 @@ function _sysimage(
         push!(precompile_statements_file, file)
 
         PackageCompiler.create_sysimage(
-            $mods,
-            project=pkgdir($mod_sym),
-            replace_default=$replace_default,
+            String[],
+            project=$project,
             sysimage_path=$sysimage_path,
             precompile_statements_file=precompile_statements_file
         )
     end
+
 end
 
-@cast function sysimage(mod::String; execute=false, replace_default=false)
-    expr = _sysimage(mod, replace_default)
-    execute ? eval(expr) : println(expr)
+function sysimage(project::String; no_execute=false)
+    previous_project = Pkg.project()
+    expr = _sysimage(project)
+    no_execute ? println(expr) : eval(expr)
+    Pkg.activate(previous_project.path)
 end
 
-@cast function dockerize(mod::String)
+function dockerize(project::String)
+    info = project_info(project)
+    name = info.name
     """
+    ARG project=\$HOME/$name
     FROM julia: latest
     RUN julia -e 'import Pkg; Pkg.add(url="https://github.com/onetonfoot/Whale.git")'
-    RUN whale sysimage $mod --replace 
+    COPY $project project
 
-    ENTRYPOINT julia -e "using $mod"
+    RUN julia -e 'using Whale; Whale.sysimage(\$project)'
+
+    ENTRYPOINT julia -J \$HOME/.julia/sysimages/$(info.name).so 
     """
-end
 
-@main
+end
 
 end

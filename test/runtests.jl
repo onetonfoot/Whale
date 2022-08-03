@@ -1,25 +1,15 @@
-using Whale, PackageCompiler, PrecompileSignatures, TOML
+using Whale, PackageCompiler, PrecompileSignatures, TOML, Test
 
-# module MyModule
+project = realpath(joinpath(@__DIR__, "../example/MyPkg/"))
 
-# function f(x::Int, y::Float64)
-#     x + y
-# end
-# end
+@testset "project_info" begin
+    a_project = Pkg.project()
+    info = Whale.project_info(project)
+    b_project = Pkg.project()
+    @test a_project.path == b_project.path
 
-# expr = Whale._sysimage("ExamplePkg")
+end
 
-# expr = Whale.sysimage("ExamplePkg", execute=true, replace_default=true)
-
-# expr = @macroexpand PrecompileSignatures.@precompile_signatures(Whale)
-# expr = @macroexpand PrecompileSignatures.@precompile_signatures(MyModule)
-
-# using ExamplePkg
-
-# PackageCompiler.create_sysimage([
-#         "ExamplePkg",
-#     ],
-#     project=pkgdir(ExamplePkg),
-#     sysimage_path=pwd(),
-#     replace_default=false
-# )
+@testset "sysimage" begin
+    @test_skip Whale.sysimage(project)
+end

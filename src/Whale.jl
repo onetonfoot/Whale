@@ -80,13 +80,20 @@ function _sysimage(
 
 end
 
+"""
+
+* project_path -  file path to a julia project
+* sysimage_path - defaults to `~/.julia/sysimages/<project name>.<ext>`  
+* no_execute - return an expr instead of executing code
+
+"""
 function sysimage(project_path::String; sysimage_path=nothing, no_execute=false)
     expr = _sysimage(project_path, sysimage_path)
     no_execute ? println(expr) : eval(expr)
 end
 
-function dockerize(project::String)
-    info = project_info(project)
+function dockerize(project_path::String)
+    info = project_info(project_path)
     name = info.name
     """
     FROM julia:latest

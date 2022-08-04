@@ -2,11 +2,6 @@ module Whale
 
 using PackageCompiler, PrecompileSignatures, TOML, Libdl, Pkg
 
-# When run from gloabl env we can get all of the packages installed
-# Pkg.project().dependencies
-
-# Pkg.dir("MyPkg")
-
 function get_module_pkgs(mod)
     folder = pkgdir(mod)
     if isnothing(folder)
@@ -30,13 +25,27 @@ function project_info(project)
     end
 end
 
+function with_project(fn, project_path)
+    previous_project = Pkg.project()
+    try
+        Pkg.activate(project_path)
+        project = Pkg.project()
+        fn(project)
+    catch e
+        @error e
+    finally
+        Pkg.activate(previous_project.path)
+    end
+end
+
 function _sysimage(
-    project::String, #TODO:  Should support both file paths or module names
+    project_path::String, #TODO:  Should support both file paths or module names
     sysimage_path=nothing,
 )
 
-    info = project_info(project)
-    mod_str = info.name
+    project_path = realpath(project_path)
+    project = project_info(project_path)
+    mod_str = project.name
     mod_sym = Symbol(mod_str)
 
     if isnothing(sysimage_path)
@@ -44,32 +53,35 @@ function _sysimage(
     end
 
     quote
-        using Pkg
-        Pkg.activate($project)
+        using Whale, Whale.PackageCompiler, Whale.PrecompileSignatures, $mod_sym
 
-        using Whale.PackageCompiler, Whale.PrecompileSignatures, $mod_sym
+        Whale.with_project($project_path) do project
 
-        sigs = @macroexpand @precompile_signatures($mod_sym)
-        file = tempname()
-        write(file, string(sigs))
-        precompile_statements_file = String[]
-        push!(precompile_statements_file, file)
+            packages = project.dependencies |> keys |> collect
 
-        PackageCompiler.create_sysimage(
-            String[],
-            project=$project,
-            sysimage_path=$sysimage_path,
-            precompile_statements_file=precompile_statements_file
-        )
+            if !isnothing(project.name)
+                push!(packages, project.name)
+            end
+
+            sigs = @macroexpand @precompile_signatures($mod_sym)
+            file = tempname()
+            write(file, string(sigs))
+            precompile_statements_file = String[]
+            push!(precompile_statements_file, file)
+
+            PackageCompiler.create_sysimage(
+                packages,
+                sysimage_path=$sysimage_path,
+                precompile_statements_file=precompile_statements_file
+            )
+        end
     end
 
 end
 
-function sysimage(project::String; no_execute=false)
-    previous_project = Pkg.project()
-    expr = _sysimage(project)
+function sysimage(project_path::String; sysimage_path=nothing, no_execute=false)
+    expr = _sysimage(project_path, sysimage_path)
     no_execute ? println(expr) : eval(expr)
-    Pkg.activate(previous_project.path)
 end
 
 function dockerize(project::String)
@@ -77,13 +89,13 @@ function dockerize(project::String)
     name = info.name
     """
     ARG project=\$HOME/$name
-    FROM julia: latest
+    FROM julia:latest
     RUN julia -e 'import Pkg; Pkg.add(url="https://github.com/onetonfoot/Whale.git")'
-    COPY $project project
+    ADD $project \$project
 
-    RUN julia -e 'using Whale; Whale.sysimage(\$project)'
+    RUN julia -e 'using Whale; Whale.sysimage("~/$name")'
 
-    ENTRYPOINT julia -J \$HOME/.julia/sysimages/$(info.name).so 
+    ENTRYPOINT julia -J \$HOME/.julia/sysimages/$(info.name).so  --project=\$project
     """
 
 end

@@ -53,9 +53,10 @@ function _sysimage(
     end
 
     quote
-        using Whale, Whale.PackageCompiler, Whale.PrecompileSignatures, $mod_sym
+        using Whale, Whale.PackageCompiler, Whale.PrecompileSignatures
 
         Whale.with_project($project_path) do project
+            @eval using $mod_sym
 
             packages = project.dependencies |> keys |> collect
 
@@ -88,16 +89,20 @@ function dockerize(project::String)
     info = project_info(project)
     name = info.name
     """
-    ARG project=\$HOME/$name
     FROM julia:latest
+    # install gcc which is needed for PackageCompiler
+    RUN apt update && apt install build-essential -y
     RUN julia -e 'import Pkg; Pkg.add(url="https://github.com/onetonfoot/Whale.git")'
-    ADD $project \$project
-
-    RUN julia -e 'using Whale; Whale.sysimage("~/$name")'
-
-    ENTRYPOINT julia -J \$HOME/.julia/sysimages/$(info.name).so  --project=\$project
+    # the correct path depends on the docker build context
+    ADD <replace me> /opt/$name
+    RUN julia --project=/opt/MyPkg -e 'using Whale; Whale.sysimage("/opt/$name")'
+    # this causes the project to be instantiated
+    RUN julia -J \$HOME/.julia/sysimages/$name.so \
+               --project=/opt/$name \
+               -e 'using MyPkg'
+    ENTRYPOINT julia -J \$HOME/.julia/sysimages/$name.so \
+               --project=/opt/$name 
     """
-
 end
 
 end

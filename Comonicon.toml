@@ -1,8 +1,0 @@
-name = "whale"
-
-[install]
-path=".julia"
-completion=true
-quiet=false
-compile="min"
-optimize=2

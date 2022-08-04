@@ -13,3 +13,7 @@ end
 @testset "sysimage" begin
     @test_skip Whale.sysimage(project)
 end
+
+@testset "sysimage" begin
+    @test Whale.dockerize(project) isa String
+end

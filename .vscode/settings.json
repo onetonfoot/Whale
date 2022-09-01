@@ -1,3 +1,4 @@
 {
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "julia.environmentPath": "c:\\Users\\oneto\\Code\\Whale"
 }

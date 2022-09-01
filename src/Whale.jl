@@ -84,23 +84,18 @@ end
 """
 Outputs a docker file in the modules directory
 """
-dockerize(mod::Module) = dockerize(pkgdir(mod))
+docker(mod::Module) = docker(pkgdir(mod))
 
-function dockerize(project_path::String)
+function docker(project_path::String)
     info = project_info(project_path)
     name = info.name
     s = """
     FROM julia:latest
-    # install gcc which is needed for PackageCompiler
+    # Install gcc which is needed for PackageCompiler
     RUN apt update && apt install build-essential -y
-    # the correct path depends on the docker build context
     ADD . /opt/$name
     RUN julia -e 'import Pkg; Pkg.add(url="https://github.com/onetonfoot/Whale.git"); Pkg.develop(path="/opt/$name")'
     RUN julia -e 'using Whale, $name; Whale.sysimage($name)'
-    # this causes the project to be instantiated
-    # RUN julia -J \$HOME/.julia/sysimages/$name.so \
-    #            --project=/opt/$name \
-    #            -e 'using MyPkg'
     ENTRYPOINT julia -J \$HOME/.julia/sysimages/$name.so \
                --project=/opt/$name 
     """

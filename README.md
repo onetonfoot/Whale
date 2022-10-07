@@ -4,7 +4,7 @@ This package helps with distributing julia programs by easing the creating of sy
 
 
 ```julia
-]add "https://github.com/onetonfoot/Whale.git
+]add "https://github.com/onetonfoot/Whale.git"
 ```
 
 There are 3 function `sysimage`,`app` and `docker` each takes a module as a argument.
